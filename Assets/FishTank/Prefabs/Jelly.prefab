@@ -1,0 +1,195 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5960878115055726468
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7078115268834116936}
+  - component: {fileID: 9104434940890875095}
+  m_Layer: 0
+  m_Name: Jelly
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7078115268834116936
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5960878115055726468}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 234934214012754415}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9104434940890875095
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5960878115055726468}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 48ecfd2d06db29f4cbd7317b1b6abf93, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bites: 30
+  minScale: 0.35
+  pieceVariants:
+  - {fileID: 1810578105609410288, guid: 61230ba8f4a909740b30c6becf6aa2cd, type: 3}
+  - {fileID: 9018610564709267787, guid: ca0c5459cf153a74785644889d70f4cd, type: 3}
+  pieceCount: 7
+  maxPieces: 20
+  piecesPerStack: 3
+  clusterRadius: 0.22
+  pieceScaleRange: {x: 0.28, y: 0.42}
+  pieceRadius: 0.5
+  tintPieces: 1
+  pieceColors:
+  - {r: 1, g: 0.25, b: 0.3, a: 1}
+  - {r: 1, g: 0.6, b: 0.15, a: 1}
+  - {r: 1, g: 0.9, b: 0.25, a: 1}
+  - {r: 0.35, g: 0.9, b: 0.4, a: 1}
+  - {r: 0.3, g: 0.65, b: 1, a: 1}
+  - {r: 0.75, g: 0.4, b: 1, a: 1}
+  hueJitter: 0.03
+  fluorescentCount: {x: 1, y: 2}
+  fluorescentPerStack: 1
+  fluorescentColors:
+  - {r: 1, g: 0.1, b: 0.65, a: 1}
+  - {r: 0.55, g: 1, b: 0, a: 1}
+  - {r: 0, g: 1, b: 0.95, a: 1}
+  - {r: 1, g: 0.45, b: 0, a: 1}
+  fluorescentEmission: 6
+  fluorescentScale: 1.15
+  fluorescentBlink: 0.5
+  fluorescentBlinkFrequency: 6
+  flightStretch: 0.35
+  impactSquash: 7
+  impactScatter: 3
+  attractRadius: 4
+  maxEaters: 6
+  scanInterval: 0.25
+  popInTime: 0.35
+  popStagger: 0.04
+  vanishTime: 0.3
+  floatAmplitude: 0.08
+  floatFrequency: 1.2
+  scaleSmoothing: 8
+  jiggleStiffness: 220
+  jiggleDamping: 9
+  biteJiggle: 4
+  clusterBiteJiggle: 1.5
+  stackJiggle: 3
+  idleWobble: 0.04
+  idleWobbleFrequency: 3
+  glowColor: {r: 1, g: 0.8, b: 0.5, a: 1}
+  emissionIntensity: 0.35
+  glowPulse: 0.3
+  glowPulseFrequency: 2.5
+--- !u!1 &5970291102567409974
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 234934214012754415}
+  - component: {fileID: 4966439089344756411}
+  m_Layer: 0
+  m_Name: Glow
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &234934214012754415
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5970291102567409974}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7078115268834116936}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!108 &4966439089344756411
+Light:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5970291102567409974}
+  m_Enabled: 1
+  serializedVersion: 10
+  m_Type: 2
+  m_Shape: 0
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Intensity: 2
+  m_Range: 3
+  m_SpotAngle: 30
+  m_InnerSpotAngle: 21.80208
+  m_CookieSize: 10
+  m_Shadows:
+    m_Type: 0
+    m_Resolution: -1
+    m_CustomResolution: -1
+    m_Strength: 1
+    m_Bias: 0.05
+    m_NormalBias: 0.4
+    m_NearPlane: 0.2
+    m_CullingMatrixOverride:
+      e00: 1
+      e01: 0
+      e02: 0
+      e03: 0
+      e10: 0
+      e11: 1
+      e12: 0
+      e13: 0
+      e20: 0
+      e21: 0
+      e22: 1
+      e23: 0
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    m_UseCullingMatrixOverride: 0
+  m_Cookie: {fileID: 0}
+  m_DrawHalo: 0
+  m_Flare: {fileID: 0}
+  m_RenderMode: 0
+  m_CullingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_RenderingLayerMask: 1
+  m_Lightmapping: 4
+  m_LightShadowCasterMode: 0
+  m_AreaSize: {x: 1, y: 1}
+  m_BounceIntensity: 1
+  m_ColorTemperature: 6570
+  m_UseColorTemperature: 0
+  m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_UseBoundingSphereOverride: 0
+  m_UseViewFrustumForShadowCasterCull: 1
+  m_ShadowRadius: 0
+  m_ShadowAngle: 0
