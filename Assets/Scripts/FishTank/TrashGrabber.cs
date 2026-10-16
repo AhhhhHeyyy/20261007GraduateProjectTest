@@ -65,19 +65,20 @@ public class TrashGrabber : MonoBehaviour
     // ---- 輸入（Joy-Con 以滑鼠模式操作時不用改）----
     protected virtual bool GripDown() => FishTankInput.GetMouseButtonDown(mouseButton);
     protected virtual bool GripHeld() => FishTankInput.GetMouseButton(mouseButton);
-    protected virtual Ray PointerRay(Camera cam) => cam.ScreenPointToRay(FishTankInput.PointerPosition);
+    /// <summary>滑鼠位置無效或在畫面外時回傳 false，這一幀不夾、不拖（放開仍會鬆手）。</summary>
+    protected virtual bool TryGetPointerRay(Camera cam, out Ray ray) => FishTankInput.TryGetPointerRay(cam, out ray);
 
     void Update()
     {
         Camera cam = ViewCamera.Current;
         if (cam == null) return;
-        Ray ray = PointerRay(cam);
+        bool hasRay = TryGetPointerRay(cam, out Ray ray);
 
-        if (held == null && GripDown())
+        if (held == null && hasRay && GripDown())
             TryGrab(ray, cam);
 
         if (held != null)
-            UpdateHeld(ray);
+            UpdateHeld(ray, hasRay);
 
         UpdateClaw();
     }
@@ -117,7 +118,7 @@ public class TrashGrabber : MonoBehaviour
         SendRumble(small ? grabSmallRumble : grabLargeRumble, 0.08f);
     }
 
-    void UpdateHeld(Ray ray)
+    void UpdateHeld(Ray ray, bool hasRay)
     {
         if (held.State == TrashItem.HoldState.Slipped)
         {
@@ -139,7 +140,7 @@ public class TrashGrabber : MonoBehaviour
             return;
         }
 
-        if (dragPlane.Raycast(ray, out float enter))
+        if (hasRay && dragPlane.Raycast(ray, out float enter))
             held.MoveTo(ray.GetPoint(enter) + grabOffset);
 
         if (held.Size == TrashItem.TrashSize.Small)

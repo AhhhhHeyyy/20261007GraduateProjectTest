@@ -137,7 +137,7 @@ Unity 2023.1.13f1 · URP 15（也支援 Built-in，以及 Unity 6 + URP 17）
   - 判定用 `SphereCastAll`（半徑 `Grab Radius`），穿過玻璃挑最近的垃圾，小碎片也夾得到。拖曳平面是過夾取點、面向鏡頭的平面。
   - 震動走靜態事件 `TrashGrabber.Rumble(strength 0–1, seconds)`：夾大型垃圾時短震一下；夾小型垃圾時持續震動，越吃力越強；滑掉時強震；帶出魚缸時中震。
   - 沒有手把時用**鏡頭與夾子抖動**模擬震動（`Simulate Rumble`），夾子會從白變紅表示吃力程度。鏡頭抖動是加減偏移，不會干擾之後的 zoom 運鏡。
-  - 輸入集中在 `GripDown()`、`GripHeld()`、`PointerRay()` 三個 virtual 方法。Joy-Con 用滑鼠模式時不用動；震動另外訂閱 `Rumble` 事件。
+  - 輸入集中在 `GripDown()`、`GripHeld()`、`TryGetPointerRay()` 三個 virtual 方法。Joy-Con 用滑鼠模式時不用動；震動另外訂閱 `Rumble` 事件。
 - `TankBootstrap`：拿掉魚缸頂蓋（垃圾要拉得出去）；生成 3 個大型、12 個小型垃圾；水面在缸頂往下 0.3。
 - 尚未處理：魚會直接穿過垃圾。（Prefab 已在 v4.1 補上）
 - ✅ 外部 Roslyn 編譯通過；尚未在 Unity Play 模式實測。
@@ -252,6 +252,16 @@ Unity 2023.1.13f1 · URP 15（也支援 Built-in，以及 Unity 6 + URP 17）
 - 打包工具存示範場景前呼叫 `StripPipelineComponents()`，拿掉 `UnityEngine.Rendering.*` 命名空間的元件（URP 執行時會自動補回相機與燈光的 Additional Data）。
 - 新增 `FishTankPostFX`：開場時才用程式建立 Bloom Volume、打開操作相機的 Post Processing（只在 URP；Built-in 不做事）。示範場景改用它，SETUP 的「要光暈」步驟也改成掛這個元件。
 - ✅ 外部編譯通過（Unity 6 / 2023、Built-in / URP、新舊 Input 共 5 種組合與打包工具）。
+
+### v7：不投影版（2026-10-16）
+- 投影版在某些專案的相機設定下有問題。投影版保留（git tag `v1.1-portal`），另外新增不投影版，兩者並存。
+- 新增 `TankMiniature`：每幀用 `Graphics.DrawMesh` 把魚缸世界的模型（扣掉 `Tank` 外觀；含從沙灘掉進去的 TrashItem / ScaleTraveler）以 `ScaleBridge.TankToBeachMatrix` 縮小畫在沙灘小魚缸裡。Skinned Mesh 每幀 BakeMesh。沒有額外物件、相機、RenderTexture、shader，任何相機設定與 Built-in / URP 都能用。每 0.2 秒重新收集模型；鏡頭在魚缸世界時不畫。
+- `ScaleBridge` 新增 `TankToBeachMatrix`、`TankWorldRoot`。
+- 打包工具產生 `BeachTankSetup_NoPortal` Prefab 與 `BeachDemo_NoPortal` 示範場景。
+- 限制：粒子、線條不畫；軟糖點光源不照縮小的模型。
+- ✅ 外部編譯通過（5 種管線／Input 組合與打包工具）；尚未 Play 實測。
+
+- 修正：滑鼠位置偶爾是 NaN（編輯器失焦、剛按 Play、滑鼠在畫面外）時 `ScreenPointToRay` 報「Screen position out of view frustum」。新增 `FishTankInput.TryGetPointerRay()`：位置無效或不在相機畫面內就跳過這一幀；TrashGrabber（夾著時仍可放開鬆手）、InteractionManager 改用它。
 
 #### 手感調整入口
 | 想要 | 調哪裡 |

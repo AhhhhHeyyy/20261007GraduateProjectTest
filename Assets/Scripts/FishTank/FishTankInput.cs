@@ -9,6 +9,21 @@ using UnityEngine.InputSystem;
 /// </summary>
 public static class FishTankInput
 {
+    /// <summary>
+    /// 從滑鼠位置打出的射線。滑鼠位置無效（編輯器失焦、剛按 Play、滑鼠在畫面外時可能是 NaN）或不在這台相機的畫面內時回傳 false，
+    /// 避免 ScreenPointToRay 報「Screen position out of view frustum」。
+    /// </summary>
+    public static bool TryGetPointerRay(Camera cam, out Ray ray)
+    {
+        ray = default;
+        if (cam == null) return false;
+        Vector2 p = PointerPosition;
+        if (float.IsNaN(p.x) || float.IsNaN(p.y) || float.IsInfinity(p.x) || float.IsInfinity(p.y)) return false;
+        if (!cam.pixelRect.Contains(p)) return false;
+        ray = cam.ScreenPointToRay(p);
+        return true;
+    }
+
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
     public static Vector2 PointerPosition => Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero;
 

@@ -177,6 +177,20 @@ public class ScaleBridge : MonoBehaviour
     /// <summary>魚缸世界範圍的中心（世界座標）。</summary>
     public Vector3 TankWorldCenter => tankWorld.transform.TransformPoint(tankWorld.center);
 
+    /// <summary>魚缸世界的根物件（FishTankSetup）。</summary>
+    public Transform TankWorldRoot => tankWorld.transform.parent != null ? tankWorld.transform.parent : tankWorld.transform;
+
+    /// <summary>把魚缸世界的世界座標換到沙灘小魚缸裡的矩陣（和 TankToBeach() 同一個換算，含縮放）。</summary>
+    public Matrix4x4 TankToBeachMatrix
+    {
+        get
+        {
+            Vector3 scale = new Vector3(beachTank.size.x / tankWorld.size.x, beachTank.size.y / tankWorld.size.y, beachTank.size.z / tankWorld.size.z);
+            return beachTank.transform.localToWorldMatrix * Matrix4x4.Translate(beachTank.center) * Matrix4x4.Scale(scale)
+                 * Matrix4x4.Translate(-tankWorld.center) * tankWorld.transform.worldToLocalMatrix;
+        }
+    }
+
     public Vector3 BeachToTank(Vector3 point) => Map(beachTank, tankWorld, point);
     public Vector3 TankToBeach(Vector3 point) => Map(tankWorld, beachTank, point);
 

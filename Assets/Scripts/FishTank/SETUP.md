@@ -20,7 +20,9 @@
 
 ## 放進現有的沙灘場景
 1. 拖入 **`FishTankSetup`**，放到場景**空曠的遠處**（例如 X = 1000，不要和地形重疊）
-2. 拖入 **`BeachTankSetup`**，放在沙灘地面上（Scale 0.33 = 魚缸世界大 3 倍）
+2. 拖入小魚缸，放在沙灘地面上（Scale 0.33 = 魚缸世界大 3 倍），**二選一**：
+   - **`BeachTankSetup`**（投影）：玻璃顯示魚缸世界的即時畫面
+   - **`BeachTankSetup_NoPortal`**（不投影）：把魚缸世界的模型縮小畫在小魚缸裡；不用額外相機和特殊 shader，**相機設定複雜、投影出問題時用這個**
 3. 主鏡頭加 **`InteractionCamera`**（要自動運鏡再加 **`TransferCameraMove`**）
 4. 要光暈：場景裡任一物件加 **`FishTankPostFX`**（URP 自動生效；Built-in 要另外裝 Post Processing Stack v2）
 
@@ -102,7 +104,7 @@ BeachTankSetup（Scale 1/k）  ── ×k ──→  FishTankSetup
 
 - 魚缸世界不縮小，手感和物理才不會跑掉；沙灘上只放縮小的外殼
 - 物品掉進小魚缸 → 放大 k 倍搬過去；大型垃圾拉出水面或物品被拿到缸頂上方 → 縮小搬回沙灘
-- 小魚缸的玻璃顯示魚缸世界的即時畫面，所以鏡頭推進去時看不出切換
+- 小魚缸看得到魚缸世界，鏡頭推進去時看不出切換。兩種做法：投影（`PortalWindow`，玻璃顯示即時畫面）或不投影（`TankMiniature`，把模型縮小畫進小魚缸）
 
 ---
 
@@ -148,6 +150,16 @@ ViewCamera（靜態）：TrashGrabber、InteractionManager、PortalWindow 用它
 | Held | 設 true 時暫停換場（一般不用） |
 | Custom Tank Size (關) | 不勾 = 照比例（等於 1）；勾起來改用 Tank Size |
 | Tank Size (0.5) | 進魚缸後的大小：1 = 照比例、0.5 = 一半、2 = 兩倍。帶出來會還原 |
+
+## TankMiniature　不投影版：把魚缸世界縮小畫進小魚缸（在 `BeachTankSetup_NoPortal`）
+| 欄位 | 功能 |
+|---|---|
+| Skip Children (Tank) | 魚缸世界裡不畫的子物件（魚缸外觀，小魚缸有自己的） |
+| Cast Shadows (開) | 縮小的模型要不要有影子 |
+| Refresh Interval (0.2) | 多久重新收集一次要畫的模型；新的魚、軟糖最多延遲這麼久出現 |
+| Hide When In Tank (開) | 鏡頭在魚缸世界時不畫 |
+
+限制：只畫模型（Mesh / Skinned Mesh），粒子和線條不畫；軟糖的點光源不會照到縮小的魚。
 
 ## PortalWindow　小魚缸的窗戶（在 `BeachTankSetup`）
 | 欄位 | 功能 |
@@ -291,6 +303,7 @@ ViewCamera（靜態）：TrashGrabber、InteractionManager、PortalWindow 用它
 | Built-in 專案出現找不到 `Unity.RenderPipelines...` 的黃色警告 | 正常，那是 URP 才用的參照，可以忽略 |
 | 出現 `The referenced script (Unknown) ... is missing` | 匯入的是舊版套件（示範場景帶了 URP 元件）。新版已拿掉，不影響功能 |
 | 自己的腳本找不到 `ScaleTraveler` 等類別 | 你的 asmdef 的 References 加 `FishTank` |
+| Console 洗版 `Screen position out of view frustum (screen pos -nan...)` | 舊版套件的問題（滑鼠位置偶爾無效）；新版已處理 |
 | 一點擊就報 Input 錯 | 匯入的是舊版套件；新版舊版 Input Manager、新版 Input System 都支援，不用改設定 |
 | 重新匯入後換過的模型不見了 | 直接改了套件 Prefab 被蓋掉；改用 Prefab Variant |
 | Console：找不到 ScaleBridge | 場景沒放 `BeachTankSetup` |
@@ -300,7 +313,9 @@ ViewCamera（靜態）：TrashGrabber、InteractionManager、PortalWindow 用它
 ## 畫面
 | 狀況 | 處理 |
 |---|---|
-| 小魚缸看不到魚 | Console 看 `PortalWindow` shader 錯誤 |
+| 小魚缸看不到魚 | Console 看 `PortalWindow` shader 錯誤；或改用 `BeachTankSetup_NoPortal` |
+| 投影在這個專案的相機下怪怪的 | 改用 **`BeachTankSetup_NoPortal`**（不用額外相機、RenderTexture、shader） |
+| 不投影版小魚缸裡少了特效 | 粒子、線條不會畫進小魚缸，只有模型會 |
 | 窗戶畫面上下顛倒 | `Materials/PortalWindow` 勾 **Flip Y** |
 | 窗戶裡看到地形或怪東西 | 魚缸世界和場景其他東西重疊，移到空曠處 |
 | 小魚缸的框也變成窗戶 | 框放到 `Body` 底下、`Tank` 以外 |

@@ -78,18 +78,20 @@ public static class FishTankPackageBuilder
         var jelly = BuildJelly(pieces);
         var trash = BuildTrashPrefabs();
         BuildSetup(fish, jelly, trash, glassMat, floorMat);
-        BuildBeachTank(glassMat, floorMat, portalMat);
+        BuildBeachTank("BeachTankSetup", glassMat, floorMat, portalMat, usePortal: true);
+        BuildBeachTank("BeachTankSetup_NoPortal", glassMat, floorMat, portalMat, usePortal: false);
         BuildBloomProfile();
 
         // 存檔後素材資料庫會重新整理，前面拿到的 Prefab / 素材參照可能失效，之後一律從路徑重新載入
         AssetDatabase.SaveAssets();
         BuildBeachTrashVariants();
         BuildDemoScene();
-        BuildBeachDemoScene();
+        BuildBeachDemoScene("BeachTankSetup", "BeachDemo");
+        BuildBeachDemoScene("BeachTankSetup_NoPortal", "BeachDemo_NoPortal");
 
         AssetDatabase.SaveAssets();
         EditorGUIUtility.PingObject(Load<GameObject>($"{PrefabDir}/BeachTankSetup.prefab"));
-        Debug.Log($"FishTank：已建立 Prefab 與示範場景（{SceneDir}/FishTankDemo、BeachDemo）。");
+        Debug.Log($"FishTank：已建立 Prefab 與示範場景（{SceneDir}/FishTankDemo、BeachDemo、BeachDemo_NoPortal）。");
     }
 
     [MenuItem("Tools/FishTank/2. 匯出 unitypackage")]
@@ -292,9 +294,10 @@ public static class FishTankPackageBuilder
     /// 沙灘上的小魚缸整組：拖到沙灘上就能用。中心點在缸底，直接放在地面上；Scale 決定倍數（0.33 = 魚缸世界大 3 倍）。
     /// ScaleBridge 自動找魚缸世界、自動對齊大小；PortalWindow 把外觀變成看進魚缸世界的窗戶。
     /// </summary>
-    static GameObject BuildBeachTank(Material glass, Material floor, Material portal)
+    /// <param name="usePortal">true：PortalWindow（玻璃顯示魚缸世界的畫面）；false：TankMiniature（把魚缸世界的模型縮小畫在小魚缸裡，不用投影）</param>
+    static GameObject BuildBeachTank(string name, Material glass, Material floor, Material portal, bool usePortal)
     {
-        var root = new GameObject("BeachTankSetup");
+        var root = new GameObject(name);
 
         var body = new GameObject("Body").transform;
         body.SetParent(root.transform, false);
@@ -320,14 +323,21 @@ public static class FishTankPackageBuilder
         bridgeSo.FindProperty("exitPoint").objectReferenceValue = exit;
         bridgeSo.ApplyModifiedPropertiesWithoutUndo();
 
-        var window = root.AddComponent<PortalWindow>();
-        var windowSo = new SerializedObject(window);
-        windowSo.FindProperty("windowMaterial").objectReferenceValue = portal;
-        windowSo.FindProperty("windowRoot").objectReferenceValue = body.Find("Tank"); // 只有玻璃和缸底變窗戶，美術加的框、裝飾不會被換掉
-        windowSo.ApplyModifiedPropertiesWithoutUndo();
+        if (usePortal)
+        {
+            var window = root.AddComponent<PortalWindow>();
+            var windowSo = new SerializedObject(window);
+            windowSo.FindProperty("windowMaterial").objectReferenceValue = portal;
+            windowSo.FindProperty("windowRoot").objectReferenceValue = body.Find("Tank"); // 只有玻璃和缸底變窗戶，美術加的框、裝飾不會被換掉
+            windowSo.ApplyModifiedPropertiesWithoutUndo();
+        }
+        else
+        {
+            root.AddComponent<TankMiniature>();
+        }
 
         root.transform.localScale = Vector3.one * BeachTankScale;
-        return SavePrefab(root, "BeachTankSetup");
+        return SavePrefab(root, name);
     }
 
     const int IgnoreRaycastLayer = 2;
@@ -465,10 +475,10 @@ public static class FishTankPackageBuilder
     }
 
     /// <summary>沙灘示範：拖兩個 Prefab + 沙灘垃圾 + 相機掛 InteractionCamera / TransferCameraMove，其他都自動。</summary>
-    static void BuildBeachDemoScene()
+    static void BuildBeachDemoScene(string beachTankName, string sceneName)
     {
         var setupPrefab = Load<GameObject>($"{PrefabDir}/FishTankSetup.prefab");
-        var beachTankPrefab = Load<GameObject>($"{PrefabDir}/BeachTankSetup.prefab");
+        var beachTankPrefab = Load<GameObject>($"{PrefabDir}/{beachTankName}.prefab");
         var sandMaterial = Load<Material>($"{MaterialDir}/Floor.mat");
 
         EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
@@ -484,7 +494,6 @@ public static class FishTankPackageBuilder
 
         PrefabUtility.InstantiatePrefab(beachTankPrefab);
 
-        // 沙灘垃圾：Prefab 原尺寸直接擺，開場 ScaleBridge 會自動縮成沙灘尺寸
         // 沙灘垃圾：用沙灘尺寸的 Variant，編輯時看到多大玩的時候就多大
         for (int i = 0; i < BeachTrashNames.Length; i++)
         {
@@ -502,7 +511,7 @@ public static class FishTankPackageBuilder
         new GameObject("PostFX").AddComponent<FishTankPostFX>();
         StripPipelineComponents();
 
-        EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), $"{SceneDir}/BeachDemo.unity");
+        EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), $"{SceneDir}/{sceneName}.unity");
     }
 
     // ---------- 工具 ----------

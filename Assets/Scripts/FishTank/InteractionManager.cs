@@ -68,7 +68,7 @@ public class InteractionManager : MonoBehaviour
         Camera cam = ViewCamera.Current;
         if (cam == null) return;
 
-        Ray ray = cam.ScreenPointToRay(FishTankInput.PointerPosition);
+        if (!FishTankInput.TryGetPointerRay(cam, out Ray ray)) return;
         if (trashGrabber != null && (trashGrabber.Held != null || trashGrabber.FindTrash(ray, out _, grabbableOnly: false) != null))
             return;
         if (!Physics.Raycast(ray, out RaycastHit hit, maxRayDistance, glassMask, QueryTriggerInteraction.Ignore))
