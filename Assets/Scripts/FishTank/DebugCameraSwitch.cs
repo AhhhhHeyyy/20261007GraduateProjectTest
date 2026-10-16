@@ -25,7 +25,7 @@ public class DebugCameraSwitch : MonoBehaviour
 
     void Update()
     {
-        if (cameras.Length > 1 && Input.GetKeyDown(key))
+        if (cameras.Length > 1 && FishTankInput.GetKeyDown(key))
             Show((index + 1) % cameras.Length);
     }
 

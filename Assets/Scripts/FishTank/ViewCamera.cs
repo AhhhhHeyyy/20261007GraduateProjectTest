@@ -1,5 +1,7 @@
 using UnityEngine;
+#if FISHTANK_URP
 using UnityEngine.Rendering.Universal;
+#endif
 
 /// <summary>
 /// 目前玩家操作用的相機（夾子、發射軟糖用它算點擊射線）。不依賴 MainCamera Tag，依序：
@@ -45,7 +47,9 @@ public static class ViewCamera
         {
             Camera cam = buffer[i];
             if (cam.targetTexture != null) continue;
+#if FISHTANK_URP
             if (cam.TryGetComponent(out UniversalAdditionalCameraData data) && data.renderType == CameraRenderType.Overlay) continue;
+#endif
             if (best == null || cam.depth > best.depth) best = cam;
         }
         return best != null ? best : Camera.main;

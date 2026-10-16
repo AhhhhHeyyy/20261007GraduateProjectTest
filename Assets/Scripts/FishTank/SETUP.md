@@ -10,10 +10,10 @@
 1. **Tools > FishTank > 1. 建立 Prefab 與示範場景**
 2. **Tools > FishTank > 2. 匯出 unitypackage**
 
-## 匯入新專案（URP，Unity 2023.1 或 6）
+## 匯入新專案（URP 或 Built-in，Unity 2023.1 或 6）
 1. 從 GitHub **Releases** 下載 `FishTank.unitypackage`（或自己打包）
 2. **Assets > Import Package > Custom Package** → 全選 → Import
-3. **Project Settings > Player > Active Input Handling** → **Both**
+3. **Built-in 專案**：材質會自動轉成 Standard（Console 會顯示轉了哪些）；光暈要另外安裝 Post Processing Stack v2，不裝也能玩
 4. 打開 `Assets/FishTank/Scenes/BeachDemo` 按 Play 確認能玩
 
 更新版本時一樣重新匯入；美術直接改過的套件 Prefab 會被蓋掉，匯入時取消勾選它們。
@@ -22,7 +22,7 @@
 1. 拖入 **`FishTankSetup`**，放到場景**空曠的遠處**（例如 X = 1000，不要和地形重疊）
 2. 拖入 **`BeachTankSetup`**，放在沙灘地面上（Scale 0.33 = 魚缸世界大 3 倍）
 3. 主鏡頭加 **`InteractionCamera`**（要自動運鏡再加 **`TransferCameraMove`**）
-4. 要光暈：主鏡頭勾 Post Processing，加 Global Volume，Profile 用 `FishTankBloom`
+4. 要光暈：場景裡任一物件加 **`FishTankPostFX`**（URP 自動生效；Built-in 要另外裝 Post Processing Stack v2）
 
 ## 讓物品可以放進魚缸
 - 現有物品：加 **`ScaleTraveler`**，不用設定，不影響它原本的物理和父子結構
@@ -31,7 +31,9 @@
 
 ## 要知道的
 - 相機不看 Tag，看哪台掛了 `InteractionCamera`（相機群組只掛主鏡頭）
-- `PortalWindow` 會打開主鏡頭的 **Opaque Texture**
+- URP 時 `PortalWindow` 會打開主鏡頭的 **Opaque Texture**（Built-in 不用）
+- 程式在 `FishTank` 組件（asmdef）裡；你的腳本如果也在自己的 asmdef 裡，要在 References 加 `FishTank`
+- 舊版 Input Manager、新版 Input System 都能用，不用改 Active Input Handling
 - Joy-Con 用滑鼠模式即可；震動訂閱 `TrashGrabber.Rumble`
 - 自己接程式：見[程式介面](#程式介面)
 
@@ -211,6 +213,11 @@ ViewCamera（靜態）：TrashGrabber、InteractionManager、PortalWindow 用它
 | Area | 撒的範圍（預設 `SwimArea`） |
 | Margin / Drop Height (0.5 / 0.5) | 離邊界多遠、離缸底多高內生成 |
 
+## Built-in / URP 支援（自動）
+- `FishTankRender`：判斷目前是 Built-in 還是 URP，建立對應的材質
+- `FishTankMaterialConverter`（Editor）：開專案或匯入後自動把套件材質轉成目前管線的版本；手動：**Tools > FishTank > 材質轉成目前的渲染管線**
+- `PortalWindow.shader`：內含兩套，Unity 自動挑（URP 用 Opaque Texture、Built-in 用 GrabPass）
+
 ## WaterVolume　水的範圍（`FishTankSetup/Water`）
 | 欄位 | 功能 |
 |---|---|
@@ -280,7 +287,11 @@ ViewCamera（靜態）：TrashGrabber、InteractionManager、PortalWindow 用它
 | 狀況 | 處理 |
 |---|---|
 | 跳出 Script Updating Consent | 按 **Yes, just for these files** |
-| 一點擊就報 Input 錯 | Active Input Handling 設 Both |
+| Built-in 專案裡東西是粉紅色 | **Tools > FishTank > 材質轉成目前的渲染管線** |
+| Built-in 專案出現找不到 `Unity.RenderPipelines...` 的黃色警告 | 正常，那是 URP 才用的參照，可以忽略 |
+| 出現 `The referenced script (Unknown) ... is missing` | 匯入的是舊版套件（示範場景帶了 URP 元件）。新版已拿掉，不影響功能 |
+| 自己的腳本找不到 `ScaleTraveler` 等類別 | 你的 asmdef 的 References 加 `FishTank` |
+| 一點擊就報 Input 錯 | 匯入的是舊版套件；新版舊版 Input Manager、新版 Input System 都支援，不用改設定 |
 | 重新匯入後換過的模型不見了 | 直接改了套件 Prefab 被蓋掉；改用 Prefab Variant |
 | Console：找不到 ScaleBridge | 場景沒放 `BeachTankSetup` |
 | Console：找不到 Tank World | 場景沒放 `FishTankSetup` |
@@ -293,7 +304,7 @@ ViewCamera（靜態）：TrashGrabber、InteractionManager、PortalWindow 用它
 | 窗戶畫面上下顛倒 | `Materials/PortalWindow` 勾 **Flip Y** |
 | 窗戶裡看到地形或怪東西 | 魚缸世界和場景其他東西重疊，移到空曠處 |
 | 小魚缸的框也變成窗戶 | 框放到 `Body` 底下、`Tank` 以外 |
-| 軟糖不發光 | 主鏡頭沒勾 Post Processing，或沒有 Bloom Volume |
+| 軟糖不發光 | 場景沒有 `FishTankPostFX`；Built-in 要另外裝 Post Processing Stack v2 |
 | 魚吃了螢光塊沒變色 | 要圍在螢光塊旁邊吃；魚的材質要有主顏色與 Emission |
 | 窗戶畫面卡頓 | PortalWindow 的 **Resolution Scale** 調 0.5 |
 

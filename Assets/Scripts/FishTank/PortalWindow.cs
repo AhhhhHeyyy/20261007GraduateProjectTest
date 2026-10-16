@@ -1,12 +1,16 @@
 using UnityEngine;
 using UnityEngine.Rendering;
+#if FISHTANK_URP
 using UnityEngine.Rendering.Universal;
+#endif
 
 /// <summary>
 /// 傳送門窗戶：讓沙灘上的小魚缸看起來裝著魚缸世界。
 /// 在魚缸世界放一台鏡像相機，每次畫面前跟著玩家的相機（ViewCamera）走到 BeachToTank 換算後的位置，畫到 RenderTexture；
 /// 小魚缸的玻璃用 FishTank/PortalWindow 材質依螢幕座標取那張圖。鏡頭推進小魚缸瞬移時，前後畫面一樣，看不出切換。
 /// 掛在小魚缸的根物件上。Window Root 底下的 Renderer（玻璃、缸底）會變成窗戶；框、裝飾放在 Window Root 外面就不會被換掉。
+/// Built-in 與 URP 都能用：URP 在 beginCameraRendering 對位置、窗戶用 Opaque Texture 取後面的畫面；
+/// Built-in 在 Camera.onPreCull 對位置、窗戶用 GrabPass。
 /// </summary>
 public class PortalWindow : MonoBehaviour
 {
@@ -59,14 +63,31 @@ public class PortalWindow : MonoBehaviour
         portalCamera = new GameObject($"{name}_PortalCamera").AddComponent<Camera>();
         portalCamera.clearFlags = CameraClearFlags.SolidColor;
         portalCamera.backgroundColor = Color.clear;
-        var data = portalCamera.GetUniversalAdditionalCameraData();
-        data.renderPostProcessing = false;
-        data.antialiasing = AntialiasingMode.None;
-        data.renderShadows = true;
+        portalCamera.allowHDR = true;
+        portalCamera.allowMSAA = false;
+#if FISHTANK_URP
+        if (!FishTankRender.IsBuiltIn)
+        {
+            var data = portalCamera.GetUniversalAdditionalCameraData();
+            data.renderPostProcessing = false;
+            data.antialiasing = AntialiasingMode.None;
+            data.renderShadows = true;
+        }
+#endif
     }
 
-    void OnEnable() => RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
-    void OnDisable() => RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
+    // 兩種管線各有自己的「相機要畫之前」事件，都訂閱，哪個有觸發就用哪個
+    void OnEnable()
+    {
+        RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
+        Camera.onPreCull += SyncPortalCamera;
+    }
+
+    void OnDisable()
+    {
+        RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
+        Camera.onPreCull -= SyncPortalCamera;
+    }
 
     void OnDestroy()
     {
@@ -87,13 +108,20 @@ public class PortalWindow : MonoBehaviour
         EnsureTexture();
         // 鏡像相機要比主相機先畫
         portalCamera.depth = viewCamera.depth - 1f;
-        // 窗戶要拿到「後面的沙灘」才能透出來
-        var viewData = viewCamera.GetUniversalAdditionalCameraData();
-        if (viewData.requiresColorOption != CameraOverrideOption.On)
-            viewData.requiresColorOption = CameraOverrideOption.On;
+#if FISHTANK_URP
+        // URP：窗戶要靠 Opaque Texture 拿到「後面的沙灘」（Built-in 用 shader 裡的 GrabPass，不用設定）
+        if (!FishTankRender.IsBuiltIn)
+        {
+            var viewData = viewCamera.GetUniversalAdditionalCameraData();
+            if (viewData.requiresColorOption != CameraOverrideOption.On)
+                viewData.requiresColorOption = CameraOverrideOption.On;
+        }
+#endif
     }
 
-    void OnBeginCameraRendering(ScriptableRenderContext context, Camera cam)
+    void OnBeginCameraRendering(ScriptableRenderContext context, Camera cam) => SyncPortalCamera(cam);
+
+    void SyncPortalCamera(Camera cam)
     {
         // 在鏡像相機畫之前才對位置，主相機這一幀的移動、震動都已經做完
         if (cam != portalCamera || viewCamera == null) return;

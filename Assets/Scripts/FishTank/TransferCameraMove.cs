@@ -96,7 +96,7 @@ public class TransferCameraMove : MonoBehaviour
 
     void Update()
     {
-        if (toggleKey != KeyCode.None && Input.GetKeyDown(toggleKey))
+        if (toggleKey != KeyCode.None && FishTankInput.GetKeyDown(toggleKey))
         {
             if (InTank) GoToBeach(0f);
             else GoToTank(0f);

@@ -63,12 +63,12 @@ public class InteractionManager : MonoBehaviour
     {
         if (fishPool == null || jellyPrefab == null) return;
 
-        if (!Input.GetMouseButtonDown(0)) return;
+        if (!FishTankInput.GetMouseButtonDown(0)) return;
 
         Camera cam = ViewCamera.Current;
         if (cam == null) return;
 
-        Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+        Ray ray = cam.ScreenPointToRay(FishTankInput.PointerPosition);
         if (trashGrabber != null && (trashGrabber.Held != null || trashGrabber.FindTrash(ray, out _, grabbableOnly: false) != null))
             return;
         if (!Physics.Raycast(ray, out RaycastHit hit, maxRayDistance, glassMask, QueryTriggerInteraction.Ignore))

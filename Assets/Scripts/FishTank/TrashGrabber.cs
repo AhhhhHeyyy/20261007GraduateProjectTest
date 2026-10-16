@@ -63,9 +63,9 @@ public class TrashGrabber : MonoBehaviour
     }
 
     // ---- 輸入（Joy-Con 以滑鼠模式操作時不用改）----
-    protected virtual bool GripDown() => Input.GetMouseButtonDown(mouseButton);
-    protected virtual bool GripHeld() => Input.GetMouseButton(mouseButton);
-    protected virtual Ray PointerRay(Camera cam) => cam.ScreenPointToRay(Input.mousePosition);
+    protected virtual bool GripDown() => FishTankInput.GetMouseButtonDown(mouseButton);
+    protected virtual bool GripHeld() => FishTankInput.GetMouseButton(mouseButton);
+    protected virtual Ray PointerRay(Camera cam) => cam.ScreenPointToRay(FishTankInput.PointerPosition);
 
     void Update()
     {

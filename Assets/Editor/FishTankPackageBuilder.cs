@@ -413,7 +413,6 @@ public static class FishTankPackageBuilder
     static void BuildDemoScene()
     {
         var setupPrefab = Load<GameObject>($"{PrefabDir}/FishTankSetup.prefab");
-        var bloom = Load<VolumeProfile>($"{Root}/FishTankBloom.asset");
 
         // 目前是 NewScene 建出的工作區：清掉暫存物件，只留相機與燈
         foreach (var go in EditorSceneManager.GetActiveScene().GetRootGameObjects())
@@ -425,14 +424,27 @@ public static class FishTankPackageBuilder
         Camera cam = Camera.main;
         cam.transform.position = new Vector3(0f, CameraHeight, -(TankSize.z * 0.5f + CameraDistance));
         cam.transform.LookAt(Vector3.zero);
-        cam.GetUniversalAdditionalCameraData().renderPostProcessing = true;
         cam.gameObject.AddComponent<InteractionCamera>(); // 標記為玩家操作用的相機
 
-        var volume = new GameObject("Global Volume").AddComponent<Volume>();
-        volume.isGlobal = true;
-        volume.sharedProfile = bloom;
+        // 光暈在開場由 FishTankPostFX 建立，場景裡不放 URP 的 Volume
+        new GameObject("PostFX").AddComponent<FishTankPostFX>();
+        StripPipelineComponents();
 
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), $"{SceneDir}/FishTankDemo.unity");
+    }
+
+    /// <summary>
+    /// 拿掉場景裡 URP 專用的元件（相機／燈光的 Additional Data、Volume），示範場景在 Built-in 專案打開時才不會出現 Missing Script。
+    /// URP 專案執行時會自動補回相機與燈光的 Additional Data。
+    /// </summary>
+    static void StripPipelineComponents()
+    {
+        foreach (var root in EditorSceneManager.GetActiveScene().GetRootGameObjects())
+            foreach (var component in root.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                string ns = component != null ? component.GetType().Namespace : null;
+                if (ns != null && ns.StartsWith("UnityEngine.Rendering")) Object.DestroyImmediate(component);
+            }
     }
 
     static readonly string[] BeachTrashNames = { "Trash_Bottle", "Trash_Bag", "Trash_Can" };
@@ -458,7 +470,6 @@ public static class FishTankPackageBuilder
         var setupPrefab = Load<GameObject>($"{PrefabDir}/FishTankSetup.prefab");
         var beachTankPrefab = Load<GameObject>($"{PrefabDir}/BeachTankSetup.prefab");
         var sandMaterial = Load<Material>($"{MaterialDir}/Floor.mat");
-        var bloom = Load<VolumeProfile>($"{Root}/FishTankBloom.asset");
 
         EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
 
@@ -484,13 +495,12 @@ public static class FishTankPackageBuilder
         Camera cam = Camera.main;
         cam.transform.position = new Vector3(-0.8f, 1.8f, -6f);
         cam.transform.LookAt(new Vector3(-0.8f, 0.7f, 0f));
-        cam.GetUniversalAdditionalCameraData().renderPostProcessing = true;
         cam.gameObject.AddComponent<InteractionCamera>();
         cam.gameObject.AddComponent<TransferCameraMove>();
 
-        var volume = new GameObject("Global Volume").AddComponent<Volume>();
-        volume.isGlobal = true;
-        volume.sharedProfile = bloom;
+        // 光暈在開場由 FishTankPostFX 建立，場景裡不放 URP 的 Volume
+        new GameObject("PostFX").AddComponent<FishTankPostFX>();
+        StripPipelineComponents();
 
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), $"{SceneDir}/BeachDemo.unity");
     }
@@ -538,32 +548,9 @@ public static class FishTankPackageBuilder
         return material;
     }
 
-    static Material CreateMaterial(Color color, bool transparent, bool emissive = false)
-    {
-        var material = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = color };
-        if (transparent)
-        {
-            material.SetFloat("_Surface", 1f);
-            material.SetFloat("_Blend", 0f);
-            material.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
-            material.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
-            material.SetFloat("_SrcBlendAlpha", (float)BlendMode.One);
-            material.SetFloat("_DstBlendAlpha", (float)BlendMode.OneMinusSrcAlpha);
-            material.SetFloat("_ZWrite", 0f);
-            material.SetOverrideTag("RenderType", "Transparent");
-            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            material.SetShaderPassEnabled("DepthOnly", false);
-            material.SetShaderPassEnabled("ShadowCaster", false);
-            material.renderQueue = (int)RenderQueue.Transparent;
-        }
-        if (emissive)
-        {
-            material.EnableKeyword("_EMISSION");
-            material.SetColor("_EmissionColor", color);
-            material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
-        }
-        return material;
-    }
+    // 依目前的渲染管線建 Lit 材質（URP Lit / Standard）
+    static Material CreateMaterial(Color color, bool transparent, bool emissive = false) =>
+        FishTankRender.CreateLit(color, transparent, emissive);
 
     static void EnsureFolder(string path)
     {

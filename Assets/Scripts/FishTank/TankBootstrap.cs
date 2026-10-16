@@ -1,6 +1,8 @@
 using UnityEngine;
 using UnityEngine.Rendering;
+#if FISHTANK_URP
 using UnityEngine.Rendering.Universal;
+#endif
 
 /// <summary>
 /// 掛在場景中的空物件上，Play 時用 Primitive 自動生成魚缸、小魚、軟糖模板、垃圾、控制器與 Bloom。
@@ -42,8 +44,10 @@ public class TankBootstrap : MonoBehaviour
 
     [Header("Bloom")]
     [SerializeField] bool addBloom = true;
+#pragma warning disable 414 // Built-in 時用不到
     [SerializeField] float bloomIntensity = 1.2f;
     [SerializeField] float bloomThreshold = 0.9f;
+#pragma warning restore 414
 
     [Header("Camera")]
     [SerializeField] float cameraDistance = 11f;
@@ -313,13 +317,17 @@ public class TankBootstrap : MonoBehaviour
 
         cam.transform.position = tankCenter + new Vector3(0f, cameraHeight, -(tankSize.z * 0.5f + cameraDistance));
         cam.transform.LookAt(tankCenter);
-        cam.GetUniversalAdditionalCameraData().renderPostProcessing = addBloom;
+#if FISHTANK_URP
+        if (!FishTankRender.IsBuiltIn) cam.GetUniversalAdditionalCameraData().renderPostProcessing = addBloom;
+#endif
         if (!cam.TryGetComponent(out InteractionCamera _)) cam.gameObject.AddComponent<InteractionCamera>();
         return cam;
     }
 
     void SetupBloom()
     {
+#if FISHTANK_URP
+        if (FishTankRender.IsBuiltIn) return; // Built-in 的光暈要另外裝 Post Processing Stack v2
         var profile = ScriptableObject.CreateInstance<VolumeProfile>();
         var bloom = profile.Add<Bloom>(true);
         bloom.intensity.Override(bloomIntensity);
@@ -330,28 +338,9 @@ public class TankBootstrap : MonoBehaviour
         volume.isGlobal = true;
         volume.priority = 10f;
         volume.sharedProfile = profile;
+#endif
     }
 
-    static Material CreateMaterial(Color color, bool transparent, bool emissive = false)
-    {
-        var material = new Material(Shader.Find("Universal Render Pipeline/Lit")) { color = color };
-        if (transparent)
-        {
-            material.SetFloat("_Surface", 1f);
-            material.SetFloat("_Blend", 0f);
-            material.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
-            material.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
-            material.SetFloat("_SrcBlendAlpha", (float)BlendMode.One);
-            material.SetFloat("_DstBlendAlpha", (float)BlendMode.OneMinusSrcAlpha);
-            material.SetFloat("_ZWrite", 0f);
-            material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            material.renderQueue = (int)RenderQueue.Transparent;
-        }
-        if (emissive)
-        {
-            material.EnableKeyword("_EMISSION");
-            material.SetColor("_EmissionColor", color);
-        }
-        return material;
-    }
+    static Material CreateMaterial(Color color, bool transparent, bool emissive = false) =>
+        FishTankRender.CreateLit(color, transparent, emissive);
 }

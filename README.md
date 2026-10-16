@@ -1,6 +1,6 @@
 # 20261007GraduateProjectTest：魚缸軟糖餵食
 
-Unity 2023.1.13f1 · URP 15（也可在 Unity 6 + URP 17 使用）
+Unity 2023.1.13f1 · URP 15（也支援 Built-in，以及 Unity 6 + URP 17）
 
 > ## 📦 想用在自己的專案？先看 **[導入手冊 SETUP.md](Assets/Scripts/FishTank/SETUP.md)**
 >
@@ -231,6 +231,27 @@ Unity 2023.1.13f1 · URP 15（也可在 Unity 6 + URP 17 使用）
 - ✅ 2023.1 / Unity 6 外部編譯通過。
 
 - `TrashGrabber`：夾住那一下的震動（Grab Large / Small Rumble）預設改為 0，不震；強度 0 的震動不送出事件、不晃鏡頭。掙扎、滑掉、帶出的震動不變。
+
+### v6：同時支援 Built-in 與 URP（2026-10-16）
+- 新增 `FishTank.asmdef`：裝了 URP 時自動定義 `FISHTANK_URP`（versionDefines），URP 專用程式只在這時編譯；沒裝 URP 的專案也能編譯。
+- 新增 `FishTankRender`：判斷目前管線（`GraphicsSettings.currentRenderPipeline`），建立 URP Lit／Standard 材質（含透明、自發光）。TankBootstrap、打包工具改用它。
+- `PortalWindow`：同時訂閱 `RenderPipelineManager.beginCameraRendering`（URP）與 `Camera.onPreCull`（Built-in）對齊鏡像相機；URP 相機設定與 Opaque Texture 包在 `FISHTANK_URP` 且非 Built-in 時才做。`ViewCamera` 的 Overlay 判斷同樣處理。
+- `PortalWindow.shader` 改成兩套 SubShader，都只用 UnityCG：URP 讀 `_CameraOpaqueTexture`，Built-in 用具名 GrabPass。不 include URP 檔案，沒裝 URP 也不會編譯失敗。
+- 新增套件內的 Editor 工具 `FishTankMaterialConverter`（`FishTank.Editor.asmdef`）：開啟專案或匯入後自動把 `Assets/FishTank` 的材質轉成目前管線的 Lit（讀存檔中的顏色、貼圖、透明、自發光，shader 不存在時也能轉）；另有選單 **Tools > FishTank > 材質轉成目前的渲染管線**。
+- Built-in 沒有光暈（要另外裝 Post Processing Stack v2）；示範場景的 URP 相機元件、Volume 在 Built-in 會顯示 Missing Script，不影響功能。
+- ✅ 外部編譯通過：2023.1 + URP 15、Unity 6 + URP 17、2023.1 Built-in（無 URP / Core RP）、Unity 6 Built-in、套件 Editor 工具、打包工具。**shader 與材質轉換只能在 Unity 裡確認，尚未在 Built-in 專案實測。**
+
+### v6.1：同時支援舊版 Input Manager 與新版 Input System（2026-10-16）
+- 在 Unity 6 Built-in 測試專案（Active Input Handling = 新版 Input System only）出現 `InvalidOperationException: You are trying to read Input using the UnityEngine.Input class`。
+- 新增 `FishTankInput`：`ENABLE_LEGACY_INPUT_MANAGER` 時用 `Input`；只開新版時改用 Input System 的 `Mouse` / `Keyboard`（KeyCode 對應 Key，數字鍵、Enter 特別處理）。`TrashGrabber`、`InteractionManager`、`TransferCameraMove`、`DebugCameraSwitch` 全部改用它；asmdef 加 `Unity.InputSystem` 參照。
+- 不用再改 Active Input Handling，SETUP 拿掉這一步。
+- ✅ 外部編譯通過：Unity 6 Built-in + 新版 Input only（測試專案的實際設定）、Unity 6 URP + Both、Unity 6 URP + 新版 only、2023 URP + 舊版、2023 Built-in + 舊版、套件 Editor 工具。
+
+### v6.2：示範場景不再出現 Missing Script（2026-10-16）
+- Built-in 專案打開示範場景出現 3 條 `The referenced script (Unknown) on this Behaviour is missing!`：示範場景是在 URP 建的，相機帶 `UniversalAdditionalCameraData`、方向光帶 `UniversalAdditionalLightData`、光暈用 `Volume`。
+- 打包工具存示範場景前呼叫 `StripPipelineComponents()`，拿掉 `UnityEngine.Rendering.*` 命名空間的元件（URP 執行時會自動補回相機與燈光的 Additional Data）。
+- 新增 `FishTankPostFX`：開場時才用程式建立 Bloom Volume、打開操作相機的 Post Processing（只在 URP；Built-in 不做事）。示範場景改用它，SETUP 的「要光暈」步驟也改成掛這個元件。
+- ✅ 外部編譯通過（Unity 6 / 2023、Built-in / URP、新舊 Input 共 5 種組合與打包工具）。
 
 #### 手感調整入口
 | 想要 | 調哪裡 |
