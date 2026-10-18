@@ -106,11 +106,12 @@ public static class FishTankPackageBuilder
         string path = EditorUtility.SaveFilePanel("匯出 FishTank", "", "FishTank.unitypackage", "unitypackage");
         if (string.IsNullOrEmpty(path)) return;
 
-        // TankBootstrap 只是本專案測試用，不帶走
+        // TankBootstrap 只是本專案測試用、*_Backup 是備份，都不帶走
         var assets = AssetDatabase.FindAssets("", new[] { Root, ScriptDir })
             .Select(AssetDatabase.GUIDToAssetPath)
             .Where(p => !AssetDatabase.IsValidFolder(p))
             .Where(p => Path.GetFileName(p) != "TankBootstrap.cs")
+            .Where(p => !Path.GetFileNameWithoutExtension(p).EndsWith("_Backup"))
             .Distinct()
             .ToArray();
 

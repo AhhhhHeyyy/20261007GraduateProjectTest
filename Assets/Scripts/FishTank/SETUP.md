@@ -18,7 +18,15 @@
 
 更新版本時一樣重新匯入；美術直接改過的套件 Prefab 會被蓋掉，匯入時取消勾選它們。
 
-## 放進現有的沙灘場景
+## 放進現有的沙灘場景：單一魚缸（最簡單，示範場景 `BeachDemo_NoPortal`）
+1. 拖入 **`FishTankSetup`**，直接放在沙灘上：**Scale 0.33**（三軸一樣），Position Y 讓缸底貼地（0.33 時約地面 + 1.01）
+2. `FishTankSetup/Water` 的 **WaterVolume** 勾 **Drop Outside**（拉出水面的垃圾丟到缸外，不會消失）
+3. 主鏡頭加 **`InteractionCamera`**（要自動運鏡再加 **`TransferCameraMove`**，運鏡終點是 `FishTankSetup/TankView`）
+4. 沙灘垃圾用 **`Trash_*_Beach`**；要光暈同下方第 4 步
+
+魚、軟糖、垃圾的參數會自動乘上魚缸的 Scale，縮小後手感不變，不用改數值。不要再放 `BeachTankSetup*`。
+
+## 放進現有的沙灘場景：兩個世界（鏡頭要「穿進魚缸」時才需要）
 1. 拖入 **`FishTankSetup`**，放到場景**空曠的遠處**（例如 X = 1000，不要和地形重疊）
 2. 拖入小魚缸，放在沙灘地面上（Scale 0.33 = 魚缸世界大 3 倍），**二選一**：
    - **`BeachTankSetup`**（投影）：玻璃顯示魚缸世界的即時畫面
