@@ -9,12 +9,15 @@ using UnityEngine.Serialization;
 /// 推進的終點是「Tank View 換算回沙灘的位置」，所以瞬移前後構圖相同。
 /// 掛在相機上，或相機群組的最外層（Target 指向要移動的物件）。不勾這個元件就不會運鏡。
 /// 也可以不靠事件，自己呼叫 GoToTank() / GoToBeach()。
+///
+/// 場景沒有 ScaleBridge（魚缸直接縮小擺在沙灘上，只有一個魚缸）時：不瞬移，直接推到魚缸的 TankView，
+/// 垃圾掉進水裡時跟進去、被帶出水面時拉回來。
 /// </summary>
 public class TransferCameraMove : MonoBehaviour
 {
     [Tooltip("要移動的物件；留空就移動自己。相機群組的話拖最外層")]
     [SerializeField] Transform target;
-    [Tooltip("留空會自動尋找")]
+    [Tooltip("留空會自動尋找；場景沒有 ScaleBridge 時改用單一魚缸模式（FishPool 所在的魚缸）")]
     [SerializeField] ScaleBridge bridge;
 
     [Header("Trigger")]
@@ -50,6 +53,7 @@ public class TransferCameraMove : MonoBehaviour
     public bool IsMoving => routine != null;
 
     Camera cam;
+    FishPool tank;
     Pose returnPose;
     bool hasReturnPose;
     Coroutine routine;
@@ -67,14 +71,22 @@ public class TransferCameraMove : MonoBehaviour
     {
         if (target == null) target = transform;
         if (bridge == null) bridge = FindAnyObjectByType<ScaleBridge>();
+        if (bridge == null) tank = FindAnyObjectByType<FishPool>();
         cam = target.GetComponentInChildren<Camera>();
     }
 
     void OnEnable()
     {
-        if (bridge == null) return;
-        bridge.MovedToTank += OnMovedToTank;
-        bridge.MovedToBeach += OnMovedToBeach;
+        if (bridge != null)
+        {
+            bridge.MovedToTank += OnMovedToTank;
+            bridge.MovedToBeach += OnMovedToBeach;
+        }
+        else
+        {
+            TrashItem.EnteredWater += OnEnteredWater;
+            TrashItem.Removed += OnRemoved;
+        }
     }
 
     void OnDisable()
@@ -84,15 +96,26 @@ public class TransferCameraMove : MonoBehaviour
             bridge.MovedToTank -= OnMovedToTank;
             bridge.MovedToBeach -= OnMovedToBeach;
         }
+        TrashItem.EnteredWater -= OnEnteredWater;
+        TrashItem.Removed -= OnRemoved;
         if (routine != null) StopCoroutine(routine);
         routine = null;
     }
 
     void Start()
     {
-        if (bridge == null) Debug.LogError("TransferCameraMove: 場景裡找不到 ScaleBridge。", this);
+        if (!Ready) Debug.LogError("TransferCameraMove: 場景裡找不到 ScaleBridge 或 FishPool。", this);
         InTank = startInTank;
     }
+
+    bool Ready => bridge != null || tank != null;
+
+    // 有 ScaleBridge 時沙灘和魚缸是兩個世界要換算；單一魚缸時同一個世界，不用換
+    float Factor => bridge != null ? bridge.Factor : 1f;
+    Vector3 BeachToTank(Vector3 point) => bridge != null ? bridge.BeachToTank(point) : point;
+    Vector3 TankToBeach(Vector3 point) => bridge != null ? bridge.TankToBeach(point) : point;
+    Vector3 TankCenter => bridge != null ? bridge.BeachTankCenter : tank.SwimBounds.center;
+    Transform DefaultTankView => bridge != null ? bridge.TankView : tank.transform.Find("TankView");
 
     void Update()
     {
@@ -113,15 +136,18 @@ public class TransferCameraMove : MonoBehaviour
         if (followOutToBeach) GoToBeach(startDelay);
     }
 
+    void OnEnteredWater(TrashItem item) => OnMovedToTank(item.transform);
+    void OnRemoved(TrashItem item) => OnMovedToBeach(item.transform);
+
     public void GoToTank(float delay = 0f)
     {
-        if (InTank || IsMoving || bridge == null) return;
+        if (InTank || IsMoving || !Ready) return;
         routine = StartCoroutine(EnterTank(delay));
     }
 
     public void GoToBeach(float delay = 0f)
     {
-        if (!InTank || IsMoving || bridge == null) return;
+        if (!InTank || IsMoving || !Ready) return;
         routine = StartCoroutine(ExitTank(delay));
     }
 
@@ -135,12 +161,12 @@ public class TransferCameraMove : MonoBehaviour
 
         // 轉向、經過小魚缸正前方，推到「停留視角在沙灘上對應的位置」→ 瞬移，剛好就是魚缸世界的停留視角
         Pose tankPose = TankPose();
-        Pose entry = new Pose(bridge.TankToBeach(tankPose.position), tankPose.rotation);
+        Pose entry = new Pose(TankToBeach(tankPose.position), tankPose.rotation);
         Vector3 approach = entry.position - entry.forward * approachDistance;
         yield return Curve(ToPose(target), approach, entry, moveTime, turnEarly: true);
 
         Place(tankPose);
-        ScaleClip(bridge.Factor);
+        ScaleClip(Factor);
         InTank = true;
         routine = null;
     }
@@ -150,9 +176,9 @@ public class TransferCameraMove : MonoBehaviour
         if (delay > 0f) yield return new WaitForSeconds(delay);
 
         // 瞬移回沙灘上對應的位置（構圖不變）→ 往後拉出小魚缸 → 回到出發前的位置
-        Pose exit = new Pose(bridge.TankToBeach(target.position), target.rotation);
+        Pose exit = new Pose(TankToBeach(target.position), target.rotation);
         Place(exit);
-        ScaleClip(1f / bridge.Factor);
+        ScaleClip(1f / Factor);
         InTank = false;
 
         Vector3 pullBack = exit.position - exit.forward * approachDistance;
@@ -172,14 +198,15 @@ public class TransferCameraMove : MonoBehaviour
     Pose TankPose()
     {
         if (tankView != null) return ToPose(tankView);
-        if (bridge.TankView != null) return ToPose(bridge.TankView);
+        Transform view = DefaultTankView;
+        if (view != null) return ToPose(view);
         Pose glass = GlassPose();
-        return new Pose(bridge.BeachToTank(glass.position), glass.rotation);
+        return new Pose(BeachToTank(glass.position), glass.rotation);
     }
 
     Pose GlassPose()
     {
-        Vector3 center = bridge.BeachTankCenter;
+        Vector3 center = TankCenter;
         Vector3 direction = center - target.position;
         direction = direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward;
         return new Pose(center - direction * glassDistance, Quaternion.LookRotation(direction));
@@ -207,7 +234,7 @@ public class TransferCameraMove : MonoBehaviour
 
     void ScaleClip(float factor)
     {
-        if (!scaleClipPlanes || cam == null) return;
+        if (!scaleClipPlanes || cam == null || factor == 1f) return;
         cam.nearClipPlane *= factor;
         cam.farClipPlane *= factor;
     }

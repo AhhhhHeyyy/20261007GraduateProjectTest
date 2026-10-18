@@ -87,7 +87,7 @@ public static class FishTankPackageBuilder
         BuildBeachTrashVariants();
         BuildDemoScene();
         BuildBeachDemoScene("BeachTankSetup", "BeachDemo");
-        BuildBeachDemoScene("BeachTankSetup_NoPortal", "BeachDemo_NoPortal");
+        BuildBeachDemoScene(null, "BeachDemo_NoPortal");
 
         AssetDatabase.SaveAssets();
         EditorGUIUtility.PingObject(Load<GameObject>($"{PrefabDir}/BeachTankSetup.prefab"));
@@ -474,17 +474,32 @@ public static class FishTankPackageBuilder
         }
     }
 
-    /// <summary>沙灘示範：拖兩個 Prefab + 沙灘垃圾 + 相機掛 InteractionCamera / TransferCameraMove，其他都自動。</summary>
+    /// <summary>
+    /// 沙灘示範：拖兩個 Prefab + 沙灘垃圾 + 相機掛 InteractionCamera / TransferCameraMove，其他都自動。
+    /// beachTankName = null：單一魚缸，FishTankSetup 直接縮小擺在沙灘上（不用 ScaleBridge）。
+    /// </summary>
     static void BuildBeachDemoScene(string beachTankName, string sceneName)
     {
         var setupPrefab = Load<GameObject>($"{PrefabDir}/FishTankSetup.prefab");
-        var beachTankPrefab = Load<GameObject>($"{PrefabDir}/{beachTankName}.prefab");
+        var beachTankPrefab = beachTankName != null ? Load<GameObject>($"{PrefabDir}/{beachTankName}.prefab") : null;
         var sandMaterial = Load<Material>($"{MaterialDir}/Floor.mat");
 
         EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
 
         var tankWorld = (GameObject)PrefabUtility.InstantiatePrefab(setupPrefab);
-        tankWorld.transform.position = new Vector3(TankWorldOffsetX, 0f, 0f);
+        if (beachTankPrefab != null)
+        {
+            tankWorld.transform.position = new Vector3(TankWorldOffsetX, 0f, 0f);
+        }
+        else
+        {
+            // 缸底貼著沙面（FishTankSetup 的中心在魚缸正中央）
+            tankWorld.transform.position = new Vector3(0f, (TankSize.y * 0.5f + GlassThickness * 0.5f) * BeachTankScale, 0f);
+            tankWorld.transform.localScale = Vector3.one * BeachTankScale;
+            var water = new SerializedObject(tankWorld.GetComponentInChildren<WaterVolume>());
+            water.FindProperty("dropOutside").boolValue = true;
+            water.ApplyModifiedPropertiesWithoutUndo();
+        }
 
         var sand = GameObject.CreatePrimitive(PrimitiveType.Cube);
         sand.name = "Sand";
@@ -492,7 +507,7 @@ public static class FishTankPackageBuilder
         sand.transform.localScale = new Vector3(20f, 0.2f, 12f);
         sand.GetComponent<Renderer>().sharedMaterial = sandMaterial;
 
-        PrefabUtility.InstantiatePrefab(beachTankPrefab);
+        if (beachTankPrefab != null) PrefabUtility.InstantiatePrefab(beachTankPrefab);
 
         // 沙灘垃圾：用沙灘尺寸的 Variant，編輯時看到多大玩的時候就多大
         for (int i = 0; i < BeachTrashNames.Length; i++)

@@ -4,6 +4,7 @@ using UnityEngine;
 /// <summary>
 /// 單隻小魚的行為：自由遊動 → 被軟糖吸引游過去 → 圍著軟糖一口一口吃 → 吃完回到自由遊動。
 /// 咬到螢光小塊時身體會逐漸變色並帶螢光。模型節點用彈簧做軟Q的拉長、壓扁、擺尾與轉彎傾斜。
+/// 速度、距離類的參數是 Scale = 1 的魚缸用的，實際會乘上 FishPool.Scale（整組魚缸縮小時魚也照比例游）。
 /// </summary>
 public class FishController : MonoBehaviour
 {
@@ -61,7 +62,7 @@ public class FishController : MonoBehaviour
     public FishState State { get; private set; } = FishState.FreeSwimming;
     public bool IsFree => State == FishState.FreeSwimming;
     public Jelly TargetJelly => jelly;
-    public Vector3 MouthPosition => transform.position + transform.forward * mouthOffset;
+    public Vector3 MouthPosition => transform.position + transform.forward * (mouthOffset * S);
 
     FishPool pool;
     Bounds swimBounds;
@@ -91,6 +92,9 @@ public class FishController : MonoBehaviour
     float wigglePhase;
     SoftSpring stretch;
     SoftSpring bank;
+
+    /// <summary>魚缸的縮放倍數；公尺單位的參數都乘上它。</summary>
+    float S => pool != null ? pool.Scale : 1f;
 
     /// <summary>由物件池在每次生成時呼叫，把狀態重設回自由遊動。</summary>
     public void ResetState(FishPool owner, Bounds bounds)
@@ -170,10 +174,11 @@ public class FishController : MonoBehaviour
 
     void FreeSwimBehavior()
     {
-        transform.position = Vector3.MoveTowards(transform.position, waypoint, swimSpeed * Time.deltaTime);
+        float s = S;
+        transform.position = Vector3.MoveTowards(transform.position, waypoint, swimSpeed * s * Time.deltaTime);
 
         // 輕微上下擺動，讓遊動比較生動（只動 y，並夾在可游範圍內）
-        float bob = Mathf.Cos(Time.time * bobFrequency + bobPhase) * bobAmplitude * bobFrequency * Time.deltaTime;
+        float bob = Mathf.Cos(Time.time * bobFrequency + bobPhase) * bobAmplitude * s * bobFrequency * Time.deltaTime;
         Vector3 pos = transform.position;
         pos.y = Mathf.Clamp(pos.y + bob, swimBounds.min.y, swimBounds.max.y);
         transform.position = pos;
@@ -181,7 +186,7 @@ public class FishController : MonoBehaviour
         FaceTowards(waypoint - transform.position);
 
         waypointTimer -= Time.deltaTime;
-        if (waypointTimer <= 0f || (waypoint - transform.position).sqrMagnitude < 0.04f)
+        if (waypointTimer <= 0f || (waypoint - transform.position).sqrMagnitude < 0.04f * s * s)
             PickNewWaypoint();
     }
 
@@ -190,10 +195,11 @@ public class FishController : MonoBehaviour
         if (!JellyAvailable()) { StopEating(); return; }
 
         Vector3 slot = SlotPosition();
-        transform.position = Vector3.MoveTowards(transform.position, slot, seekSpeed * Time.deltaTime);
+        transform.position = Vector3.MoveTowards(transform.position, slot, seekSpeed * S * Time.deltaTime);
         FaceTowards(jelly.transform.position - transform.position);
 
-        if ((slot - transform.position).sqrMagnitude < arriveDistance * arriveDistance)
+        float arrive = arriveDistance * S;
+        if ((slot - transform.position).sqrMagnitude < arrive * arrive)
         {
             State = FishState.Eating;
             biteTimer = NextBiteDelay();
@@ -208,7 +214,7 @@ public class FishController : MonoBehaviour
 
         // 跟著軟糖（漂浮、縮小）調整站位，並往軟糖方向啄
         peckTimer += Time.deltaTime;
-        float peck = Mathf.Max(0f, Mathf.Sin(peckTimer / biteInterval * Mathf.PI * 2f)) * peckAmplitude;
+        float peck = Mathf.Max(0f, Mathf.Sin(peckTimer / biteInterval * Mathf.PI * 2f)) * peckAmplitude * S;
         Vector3 slot = SlotPosition() - slotDirection * peck;
         transform.position = Vector3.Lerp(transform.position, slot, 1f - Mathf.Exp(-10f * Time.deltaTime));
         FaceTowards(jelly.transform.position - transform.position);
@@ -233,7 +239,7 @@ public class FishController : MonoBehaviour
     bool JellyAvailable() => jelly != null && !jelly.IsEmpty;
 
     Vector3 SlotPosition() =>
-        jelly.transform.position + slotDirection * (jelly.Radius + mouthOffset);
+        jelly.transform.position + slotDirection * (jelly.Radius + mouthOffset * S);
 
     float NextBiteDelay() => biteInterval + Random.Range(-biteJitter, biteJitter);
 
@@ -242,7 +248,8 @@ public class FishController : MonoBehaviour
         float dt = Time.deltaTime;
         if (visual == null || dt <= 0f) return;
 
-        float speed = (transform.position - lastPosition).magnitude / dt;
+        // 換算回 Scale = 1 的速度，拉長、擺尾的手感才不會因為縮小而變弱
+        float speed = (transform.position - lastPosition).magnitude / dt / Mathf.Max(S, 0.0001f);
         float yawRate = Vector3.SignedAngle(lastForward, transform.forward, Vector3.up) / dt;
         lastPosition = transform.position;
         lastForward = transform.forward;

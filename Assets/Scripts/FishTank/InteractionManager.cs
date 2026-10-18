@@ -4,6 +4,7 @@ using UnityEngine;
 /// 點擊總控：滑鼠點擊魚缸玻璃 → 從鏡頭用力射出一團軟糖，飛到玻璃內側黏住，軟糖自己吸引附近的魚來吃。
 /// 每團裡混一兩塊螢光小塊（由 Jelly 決定）；射在既有軟糖附近會黏上去堆疊變大。
 /// 和夾垃圾共用左鍵：游標下有垃圾時交給 TrashGrabber，不發射。
+/// 發射速度、弧度、發射點、深度、堆疊距離是 Scale = 1 的魚缸用的，實際會乘上 FishPool.Scale。
 /// </summary>
 public class InteractionManager : MonoBehaviour
 {
@@ -77,19 +78,20 @@ public class InteractionManager : MonoBehaviour
             return;
 
         // hit.normal 朝向缸外，往反方向推進一點就是缸內
-        Vector3 position = ClampToSwimArea(hit.point - hit.normal * insetDepth);
+        Vector3 position = ClampToSwimArea(hit.point - hit.normal * (insetDepth * fishPool.Scale));
         FireJelly(cam.transform, position, hit.normal);
     }
 
     void FireJelly(Transform cam, Vector3 position, Vector3 surfaceNormal)
     {
+        float s = fishPool.Scale;
         // 射向既有軟糖的會在落地時黏上去，不算新的一顆
-        if (Jelly.Active.Count >= maxJellies && FindNearestJelly(position, stackRadius) == null) return;
+        if (Jelly.Active.Count >= maxJellies && FindNearestJelly(position, stackRadius * s) == null) return;
 
-        Vector3 from = cam.TransformPoint(launchOffset);
+        Vector3 from = cam.TransformPoint(launchOffset * s);
         Jelly jelly = Instantiate(jellyPrefab, from, Quaternion.identity, jellyContainer);
         jelly.gameObject.SetActive(true);
-        jelly.Launch(fishPool, from, position, surfaceNormal, launchSpeed, launchForce, launchArc, stackRadius);
+        jelly.Launch(fishPool, from, position, surfaceNormal, launchSpeed * s, launchForce, launchArc * s, stackRadius * s);
     }
 
     static Jelly FindNearestJelly(Vector3 position, float radius)

@@ -5,6 +5,7 @@ using UnityEngine;
 /// <summary>
 /// 小魚物件池：逃出魚缸的魚隱藏後放回池中，延遲後在缸內重生，維持魚的數量。
 /// 可直接在 Inspector 設定（魚 Prefab、數量、可游範圍），或由程式呼叫 Initialize()。
+/// 整組魚缸可以直接縮放：魚、軟糖、垃圾用公尺算的參數都會乘上這個物件的 Scale（見 Scale）。
 /// </summary>
 public class FishPool : MonoBehaviour
 {
@@ -31,6 +32,8 @@ public class FishPool : MonoBehaviour
     public Bounds SwimBounds => swimBounds;
     /// <summary>Inspector 指定的可游範圍（ScaleBridge 用來自動找魚缸世界）。</summary>
     public BoxCollider SwimAreaCollider => swimArea;
+    /// <summary>魚缸的縮放倍數（這個物件的 Scale）。魚、軟糖用公尺算的參數都乘上它，縮小整組魚缸手感不變。</summary>
+    public float Scale => transform.lossyScale.x;
 
     void Start()
     {
@@ -117,10 +120,10 @@ public class FishPool : MonoBehaviour
         }
         else
         {
-            bounds = new Bounds(transform.TransformPoint(swimCenter), swimSize);
+            bounds = new Bounds(transform.TransformPoint(swimCenter), swimSize * Scale);
         }
 
-        bounds.Expand(-swimMargin * 2f);
+        bounds.Expand(-swimMargin * Scale * 2f);
         return bounds;
     }
 

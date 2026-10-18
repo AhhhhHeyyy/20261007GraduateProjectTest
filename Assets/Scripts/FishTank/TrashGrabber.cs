@@ -5,6 +5,7 @@ using UnityEngine;
 /// 夾垃圾：左鍵按住游標下的垃圾就夾住，拖曳移動，放開鬆手（點在垃圾以外的地方是發射軟糖）。
 /// 水裡：大型垃圾拉出水面就帶出魚缸，小型垃圾會掙扎、滑掉；沙灘上大小都正常夾。水在哪由 WaterVolume 決定。
 /// Joy-Con 直接當滑鼠用（游標 + 左鍵）；震動用 Rumble 事件送出，沒接手把時用鏡頭與夾子抖動模擬。
+/// 夾取半徑、抖動幅度、夾子大小會乘上這個物件的 Scale（整組魚缸縮小時跟著縮）。
 /// </summary>
 public class TrashGrabber : MonoBehaviour
 {
@@ -49,6 +50,7 @@ public class TrashGrabber : MonoBehaviour
     Vector3 cameraOffset;
 
     public TrashItem Held => held;
+    float S => transform.lossyScale.x;
 
     void Awake() => BuildClaw();
 
@@ -92,7 +94,7 @@ public class TrashGrabber : MonoBehaviour
         TrashItem best = null;
         float bestDistance = float.MaxValue;
         point = Vector3.zero;
-        foreach (RaycastHit hit in Physics.SphereCastAll(ray, grabRadius, maxRayDistance, ~0, QueryTriggerInteraction.Ignore))
+        foreach (RaycastHit hit in Physics.SphereCastAll(ray, grabRadius * S, maxRayDistance, ~0, QueryTriggerInteraction.Ignore))
         {
             var item = hit.collider.GetComponentInParent<TrashItem>();
             if (item == null || item.State == TrashItem.HoldState.Removed) continue;
@@ -165,7 +167,7 @@ public class TrashGrabber : MonoBehaviour
         Camera cam = ViewCamera.Current;
         if (cam == null || !simulateRumble || Time.time >= shakeUntil) return;
         shakenCamera = cam.transform;
-        cameraOffset = UnityEngine.Random.insideUnitSphere * (cameraShake * shakeStrength);
+        cameraOffset = UnityEngine.Random.insideUnitSphere * (cameraShake * S * shakeStrength);
         shakenCamera.position += cameraOffset;
     }
 
@@ -188,7 +190,7 @@ public class TrashGrabber : MonoBehaviour
         if (held == null) return;
 
         Vector3 shake = simulateRumble && Time.time < shakeUntil
-            ? UnityEngine.Random.insideUnitSphere * (clawShake * shakeStrength)
+            ? UnityEngine.Random.insideUnitSphere * (clawShake * S * shakeStrength)
             : Vector3.zero;
         claw.position = held.transform.position - grabOffset + shake;
 

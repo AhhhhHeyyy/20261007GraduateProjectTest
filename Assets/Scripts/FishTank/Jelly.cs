@@ -6,6 +6,7 @@ using UnityEngine;
 /// 從鏡頭用力射出 → 啪一聲黏在玻璃內側 → 吸引半徑內的小魚圍過來一口一口吃掉 → 吃完縮小消失。
 /// 每塊都有自己的彈簧，飛行、撞擊、被咬、堆疊時會軟Q晃動。
 /// 每團裡混一兩塊很亮、會閃的螢光小塊；魚咬到螢光塊時會變成那個顏色並帶螢光。
+/// 吸引範圍、漂浮幅度、光照範圍會乘上 FishPool.Scale（軟糖本身是魚缸的子物件，大小自動跟著縮放）。
 /// </summary>
 public class Jelly : MonoBehaviour
 {
@@ -137,7 +138,7 @@ public class Jelly : MonoBehaviour
     /// <summary>黏住的玻璃面往缸外的法線；沒黏在玻璃上時為 zero。魚會避開這一側。</summary>
     public Vector3 SurfaceNormal { get; private set; }
     /// <summary>目前整團的半徑（世界座標），給魚決定圍食站位。</summary>
-    public float Radius => transform.localScale.x * extent;
+    public float Radius => transform.lossyScale.x * extent;
 
     readonly List<FishController> eaters = new List<FishController>();
     readonly List<Piece> pieces = new List<Piece>();
@@ -145,6 +146,7 @@ public class Jelly : MonoBehaviour
     FishPool pool;
     Light glowLight;
     float baseLightIntensity;
+    float baseLightRange;
     Vector3 baseScale;
     Vector3 anchor;
     float extent;
@@ -170,8 +172,14 @@ public class Jelly : MonoBehaviour
     {
         baseScale = transform.localScale;
         glowLight = GetComponentInChildren<Light>();
-        if (glowLight != null) baseLightIntensity = glowLight.intensity;
+        if (glowLight != null)
+        {
+            baseLightIntensity = glowLight.intensity;
+            baseLightRange = glowLight.range;
+        }
     }
+
+    float S => pool != null ? pool.Scale : 1f;
 
     /// <summary>由程式指定小塊模板（測試場景用；一般直接在 Inspector 設定）。</summary>
     public void SetPieceVariants(params GameObject[] variants) => pieceVariants = variants;
@@ -194,7 +202,11 @@ public class Jelly : MonoBehaviour
         phase = Random.value * Mathf.PI * 2f;
         colorCursor = Random.Range(0, Mathf.Max(1, pieceColors.Length));
         clusterSpring.Reset();
-        if (glowLight != null) glowLight.color = glowColor;
+        if (glowLight != null)
+        {
+            glowLight.color = glowColor;
+            glowLight.range = baseLightRange * S; // Light 的範圍不會跟著 Transform 縮放
+        }
 
         if (pieceVariants != null && pieceVariants.Length > 0)
         {
@@ -307,7 +319,7 @@ public class Jelly : MonoBehaviour
         transform.localScale = Vector3.Scale(baseScale * currentScale, SoftSpring.Stretch(clusterSpring.Value, 1));
 
         // 黏在玻璃上就不漂；直接放置的才輕輕漂浮
-        float drift = SurfaceNormal == Vector3.zero ? Mathf.Sin(age * floatFrequency + phase) * floatAmplitude : 0f;
+        float drift = SurfaceNormal == Vector3.zero ? Mathf.Sin(age * floatFrequency + phase) * floatAmplitude * S : 0f;
         transform.position = anchor + Vector3.up * drift;
 
         UpdateGlow(Mathf.Clamp01((float)remaining / capacity));
@@ -490,7 +502,8 @@ public class Jelly : MonoBehaviour
         if (pool == null || eaters.Count >= maxEaters) return;
 
         // 由近到遠補位
-        float radiusSqr = attractRadius * attractRadius;
+        float radius = attractRadius * S;
+        float radiusSqr = radius * radius;
         while (eaters.Count < maxEaters)
         {
             FishController nearest = null;

@@ -5,6 +5,7 @@ using UnityEngine;
 /// 一片水：盒狀範圍，頂面就是水面。垃圾在裡面會受水的阻力與浮力，小型垃圾被夾時會滑掉。
 /// 魚缸裡放一個；之後沙灘的海也可以放一個（把 Remove On Exit 關掉）。
 /// 範圍以這個物件的位置為中心，跟著物件移動、縮放（不要旋轉 X / Z）。
+/// 縮小的魚缸（Scale 小於 1）裡，垃圾的浮沉、拖曳、滑掉也照比例變慢、變小（見 Scale）。
 /// </summary>
 public class WaterVolume : MonoBehaviour
 {
@@ -14,8 +15,19 @@ public class WaterVolume : MonoBehaviour
     [SerializeField] Vector3 size = new Vector3(10f, 5.7f, 6f);
     [Tooltip("把大型垃圾拉出這片水面時算「帶出」（觸發 TrashItem.Removed）。沙灘的海要關掉")]
     [SerializeField] bool removeOnExit = true;
+    [Tooltip("帶出的垃圾丟到魚缸外面（+X 那一側）掉下去，而不是消失。魚缸直接擺在沙灘上時打開；有 ScaleBridge 的場景不用管")]
+    [SerializeField] bool dropOutside = false;
+    [Tooltip("丟出去時離玻璃多遠、往外彈的速度（乘上 Scale）")]
+    [SerializeField] float dropDistance = 1.5f;
+    [SerializeField] float dropPop = 2f;
 
     public bool RemoveOnExit => removeOnExit;
+    public bool DropOutside => dropOutside;
+    /// <summary>這片水的縮放倍數。垃圾在水裡用公尺算的參數（速度、距離、浮沉）都乘上它。</summary>
+    public float Scale => transform.lossyScale.x;
+    /// <summary>帶出的垃圾落下的位置：+X 玻璃外、水面高度。</summary>
+    public Vector3 DropPosition => transform.TransformPoint(center + new Vector3(size.x * 0.5f, size.y * 0.5f, 0f)) + transform.right * (dropDistance * Scale);
+    public Vector3 DropVelocity => (transform.right + Vector3.up) * (dropPop * Scale);
     public float SurfaceY => transform.TransformPoint(center + Vector3.up * (size.y * 0.5f)).y;
 
     public void Initialize(Vector3 volumeSize, bool removeWhenLifted = true)

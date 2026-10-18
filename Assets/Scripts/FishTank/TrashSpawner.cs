@@ -3,6 +3,7 @@ using UnityEngine;
 /// <summary>
 /// 開場時把垃圾 Prefab 隨機撒在魚缸底部。每種垃圾可設數量、隨機大小與隨機上色。
 /// 可直接在 Inspector 設定，或由程式呼叫 Initialize()。
+/// 垃圾生在這個物件底下，大小跟著它的 Scale；Margin、Drop Height 也會乘上 Scale。
 /// </summary>
 public class TrashSpawner : MonoBehaviour
 {
@@ -69,7 +70,7 @@ public class TrashSpawner : MonoBehaviour
     {
         Vector3 position = new Vector3(
             Random.Range(bounds.min.x, bounds.max.x),
-            bounds.min.y + Random.Range(0f, dropHeight),
+            bounds.min.y + Random.Range(0f, dropHeight * transform.lossyScale.x),
             Random.Range(bounds.min.z, bounds.max.z));
 
         TrashItem item = Instantiate(entry.prefab, position, Random.rotation, container);
@@ -96,10 +97,10 @@ public class TrashSpawner : MonoBehaviour
         }
         else
         {
-            bounds = new Bounds(transform.TransformPoint(areaCenter), areaSize);
+            bounds = new Bounds(transform.TransformPoint(areaCenter), areaSize * transform.lossyScale.x);
         }
 
-        bounds.Expand(-margin * 2f);
+        bounds.Expand(-margin * transform.lossyScale.x * 2f);
         return bounds;
     }
 
@@ -108,7 +109,7 @@ public class TrashSpawner : MonoBehaviour
         Bounds b = GetConfiguredBounds();
         Gizmos.color = new Color(1f, 0.6f, 0.2f, 0.6f);
         Gizmos.DrawWireCube(
-            new Vector3(b.center.x, b.min.y + dropHeight * 0.5f, b.center.z),
-            new Vector3(b.size.x, dropHeight, b.size.z));
+            new Vector3(b.center.x, b.min.y + dropHeight * transform.lossyScale.x * 0.5f, b.center.z),
+            new Vector3(b.size.x, dropHeight * transform.lossyScale.x, b.size.z));
     }
 }

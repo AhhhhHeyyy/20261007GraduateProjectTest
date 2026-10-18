@@ -8,6 +8,8 @@ using UnityEngine;
 /// 在水裡（WaterVolume）：大型夾得住、拉得出水面；小型夾住後跟不上、一直抖，最後一定滑掉沉回去。
 /// 在水外（沙灘）：大小都正常跟手。跨世界時由 ScaleBridge 呼叫 Teleport() 換位置與尺寸。
 /// 手感參數都在這裡；TrashGrabber 只負責輸入、判定與回饋。需要 Rigidbody + Collider。
+/// 距離、速度類參數是 Scale = 1 的水用的；在水裡（或剛被拉出水面）時會乘上 WaterVolume.Scale，
+/// 重力也一起換算，所以整組魚缸縮小擺在沙灘上時，垃圾在缸裡的浮沉、拖曳手感不變。
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
 public class TrashItem : MonoBehaviour
@@ -19,6 +21,8 @@ public class TrashItem : MonoBehaviour
 
     /// <summary>大型垃圾被拉出水面（WaterVolume 勾 Remove On Exit）時觸發。有 ScaleBridge 時會把它送回沙灘，否則消失。</summary>
     public static event Action<TrashItem> Removed;
+    /// <summary>從水外掉進水裡時觸發（開場就在水裡的不算）。魚缸直接擺在沙灘上時，運鏡靠它跟進魚缸。</summary>
+    public static event Action<TrashItem> EnteredWater;
 
     [SerializeField] TrashSize size = TrashSize.Large;
     [Tooltip("勾起來：進魚缸後的大小改用 Tank Size，不照比例。帶出來時會還原成原本的大小")]
@@ -73,6 +77,7 @@ public class TrashItem : MonoBehaviour
     Rigidbody body;
     WaterVolume water;
     bool inWater;
+    bool waterKnown;
     Vector3 target;
     float holdTimer;
     float slipDeadline;
@@ -80,6 +85,9 @@ public class TrashItem : MonoBehaviour
     float noiseSeed;
 
     public void Configure(TrashSize trashSize) => size = trashSize;
+
+    /// <summary>所在水的縮放倍數（沙灘上是 1）；公尺單位的參數都乘上它。</summary>
+    float S => water != null ? water.Scale : 1f;
 
     void Awake()
     {
@@ -123,6 +131,7 @@ public class TrashItem : MonoBehaviour
         State = HoldState.Free;
         Strain = 0f;
         water = null;
+        waterKnown = false;
         foreach (Collider c in GetComponentsInChildren<Collider>()) c.enabled = true;
         body.isKinematic = false;
         body.useGravity = true;
@@ -146,7 +155,8 @@ public class TrashItem : MonoBehaviour
 
         if (State != HoldState.Held)
         {
-            if (inWater) body.AddForce(-Physics.gravity * buoyancy, ForceMode.Acceleration);
+            // 水裡的淨重力 = g × (1 - 浮力) × Scale：縮小的魚缸裡照比例沉得慢
+            if (inWater) body.AddForce(-Physics.gravity * (1f - S * (1f - buoyancy)), ForceMode.Acceleration);
             return;
         }
 
@@ -158,7 +168,10 @@ public class TrashItem : MonoBehaviour
     void UpdateWater()
     {
         WaterVolume current = WaterVolume.Find(body.position);
+        bool wasInWater = inWater;
         inWater = current != null;
+        if (inWater && !wasInWater && waterKnown) EnteredWater?.Invoke(this);
+        waterKnown = true;
         if (current != null) water = current;
         // 被拉到水面上方時還記得是哪片水，才判斷得了「帶出」
         else if (water != null && !water.IsAbove(body.position)) water = null;
@@ -167,30 +180,31 @@ public class TrashItem : MonoBehaviour
     void UpdateFollow()
     {
         Follow(target, followGain);
-        Strain = Mathf.Clamp01((target - body.position).magnitude / 1f);
+        Strain = Mathf.Clamp01((target - body.position).magnitude / S);
 
         if (size == TrashSize.Large && water != null && water.RemoveOnExit &&
-            body.position.y > water.SurfaceY + removeHeight)
+            body.position.y > water.SurfaceY + removeHeight * S)
             StartCoroutine(RemoveRoutine());
     }
 
     void UpdateSmallInWater()
     {
         // 阻力：跟得很慢、一直亂抖，接近水面一定滑掉
+        float s = S;
         float t = Time.time * struggleFrequency;
         Vector3 jitter = new Vector3(
             Mathf.PerlinNoise(noiseSeed, t) - 0.5f,
             Mathf.PerlinNoise(noiseSeed + 10f, t) - 0.5f,
             Mathf.PerlinNoise(noiseSeed + 20f, t) - 0.5f) * (2f * struggleJitter);
-        Follow(target + jitter, followGain * (1f - resistance));
+        Follow(target + jitter * s, followGain * (1f - resistance));
         body.AddTorque(jitter * 20f, ForceMode.Acceleration);
 
         float gap = (target - body.position).magnitude;
-        Strain = Mathf.Clamp01(gap / slipDistance);
+        Strain = Mathf.Clamp01(gap / (slipDistance * s));
 
         bool timeUp = holdTimer >= slipDeadline;
-        bool pulledTooFast = gap > slipDistance;
-        bool nearSurface = body.position.y > water.SurfaceY - surfaceSlipMargin;
+        bool pulledTooFast = gap > slipDistance * s;
+        bool nearSurface = body.position.y > water.SurfaceY - surfaceSlipMargin * s;
         if (timeUp || pulledTooFast || nearSurface)
             Slip();
     }
@@ -198,7 +212,7 @@ public class TrashItem : MonoBehaviour
     void Follow(Vector3 point, float gain)
     {
         Vector3 velocity = (point - body.position) * gain;
-        SetVelocity(Vector3.ClampMagnitude(velocity, maxFollowSpeed));
+        SetVelocity(Vector3.ClampMagnitude(velocity, maxFollowSpeed * S));
     }
 
     void Slip()
@@ -210,7 +224,7 @@ public class TrashItem : MonoBehaviour
 
         Vector3 side = UnityEngine.Random.insideUnitSphere;
         side.y = 0f;
-        SetVelocity((Vector3.down + side).normalized * slipKick);
+        SetVelocity((Vector3.down + side).normalized * (slipKick * S));
         body.AddTorque(UnityEngine.Random.insideUnitSphere * slipKick * 5f, ForceMode.VelocityChange);
     }
 
@@ -247,13 +261,21 @@ public class TrashItem : MonoBehaviour
         Removed?.Invoke(this);
         if (State != HoldState.Removed) yield break;
 
+        // 魚缸直接擺在沙灘上：丟到魚缸外面掉下去
+        if (water != null && water.DropOutside)
+        {
+            Teleport(water.DropPosition, 1f, water.DropVelocity);
+            yield break;
+        }
+
         // 沒人接手：往上彈一下再縮掉
+        float s = S;
         Vector3 from = transform.position;
         Vector3 startScale = transform.localScale;
         for (float t = 0f; t < removeTime; t += Time.deltaTime)
         {
             float k = t / removeTime;
-            transform.position = from + Vector3.up * (Mathf.Sin(k * Mathf.PI) * 0.4f + k * 0.3f);
+            transform.position = from + Vector3.up * ((Mathf.Sin(k * Mathf.PI) * 0.4f + k * 0.3f) * s);
             transform.localScale = startScale * (1f - k * k);
             yield return null;
         }
