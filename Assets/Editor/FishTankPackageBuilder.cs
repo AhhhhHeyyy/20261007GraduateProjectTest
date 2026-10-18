@@ -87,11 +87,11 @@ public static class FishTankPackageBuilder
         BuildBeachTrashVariants();
         BuildDemoScene();
         BuildBeachDemoScene("BeachTankSetup", "BeachDemo");
-        BuildBeachDemoScene(null, "BeachDemo_NoPortal");
+        BuildBeachDemoScene(null, "BeachDemo_SingleTank");
 
         AssetDatabase.SaveAssets();
         EditorGUIUtility.PingObject(Load<GameObject>($"{PrefabDir}/BeachTankSetup.prefab"));
-        Debug.Log($"FishTank：已建立 Prefab 與示範場景（{SceneDir}/FishTankDemo、BeachDemo、BeachDemo_NoPortal）。");
+        Debug.Log($"FishTank：已建立 Prefab 與示範場景（{SceneDir}/FishTankDemo、BeachDemo、BeachDemo_SingleTank）。");
     }
 
     [MenuItem("Tools/FishTank/2. 匯出 unitypackage")]

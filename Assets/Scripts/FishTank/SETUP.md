@@ -18,7 +18,7 @@
 
 更新版本時一樣重新匯入；美術直接改過的套件 Prefab 會被蓋掉，匯入時取消勾選它們。
 
-## 放進現有的沙灘場景：單一魚缸（最簡單，示範場景 `BeachDemo_NoPortal`）
+## 放進現有的沙灘場景：單一魚缸（最簡單，示範場景 `BeachDemo_SingleTank`）
 1. 拖入 **`FishTankSetup`**，直接放在沙灘上：**Scale 0.33**（三軸一樣），Position Y 讓缸底貼地（0.33 時約地面 + 1.01）
 2. `FishTankSetup/Water` 的 **WaterVolume** 勾 **Drop Outside**（拉出水面的垃圾丟到缸外，不會消失）
 3. 主鏡頭加 **`InteractionCamera`**（要自動運鏡再加 **`TransferCameraMove`**，運鏡終點是 `FishTankSetup/TankView`）

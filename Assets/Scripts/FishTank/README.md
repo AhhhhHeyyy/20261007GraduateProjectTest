@@ -42,7 +42,7 @@
 
 ### 配置 C：沙灘 + 單一魚缸（最簡單，3 步）
 
-只有一個魚缸，直接縮小擺在沙灘上，不用 `BeachTankSetup`、`ScaleBridge`，也沒有遠處的魚缸世界。示範場景：`BeachDemo_NoPortal`。
+只有一個魚缸，直接縮小擺在沙灘上，不用 `BeachTankSetup`、`ScaleBridge`，也沒有遠處的魚缸世界。示範場景：`BeachDemo_SingleTank`。
 
 1. **`FishTankSetup`** 拖到沙灘上，**Scale 設 0.33**（三軸一樣），Position Y 設成缸底貼地（0.33 時約 **1.01**）。
 2. 展開 `FishTankSetup/Water`，**WaterVolume** 勾 **Drop Outside**（大型垃圾拉出水面後丟到魚缸 +X 側外面，不會消失）。
